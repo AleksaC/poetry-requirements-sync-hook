@@ -1,0 +1,7 @@
+- id: poetry-requirements-sync
+  name: poetry-requirements-sync
+  description: "git pre-commit hook for removing pkg-resources from requirements.txt"
+  entry: sync-requirements
+  language: python
+  require_serial: true
+  types: [text]
