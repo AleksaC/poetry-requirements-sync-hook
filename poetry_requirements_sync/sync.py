@@ -16,6 +16,42 @@ def main(argv=None):
 
     args = parser.parse_args(argv)
 
+    # This makes an assumption that this code is run from root of the project, make sure
+    # this holds. It also only covers the case where pyproject.toml is in root directory
+    # allow arbitrarily nesting
+
+    for filename in args.filenames:
+        if "pyproject.toml" in filename:
+            break  # TODO: Take path to pyproject.toml here
+    else:
+        return 0
+
+    res = subprocess.run(
+        ["poetry", "export", "--without-hashes", "-f", "requirements.txt"],
+        stdout=subprocess.PIPE
+    )
+
+    updated = res.stdout.decode()
+
+    reqs_filename = "requirements.txt"
+
+    try:
+        with open(reqs_filename, "r+") as f:
+            if f.read().splitlines() == updated.splitlines():
+                print("%s already synced with pyproject.toml" % reqs_filename)
+                return 0
+            else:
+                f.seek(0)
+                f.write(updated)
+                f.truncate()
+    except FileNotFoundError:
+        with open(reqs_filename, "w") as f:
+            f.write(updated)
+
+    subprocess.run(["git", "add", reqs_filename])
+
+    print("%s synced with pyproject.toml" % reqs_filename)
+
     return 0
 
 
