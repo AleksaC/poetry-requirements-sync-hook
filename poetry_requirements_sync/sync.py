@@ -3,38 +3,45 @@
 from __future__ import print_function
 
 import argparse
+import errno
+import os
 import subprocess
 import sys
 
 
-def main(argv=None):
+def parse_arguments(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
         "filenames", nargs="*", help="Filenames pre-commit believes are changed.",
     )
 
-    args = parser.parse_args(argv)
+    return parser.parse_args(args)
 
-    # This makes an assumption that this code is run from root of the project, make sure
-    # this holds. It also only covers the case where pyproject.toml is in root directory
-    # allow arbitrarily nesting
 
-    for filename in args.filenames:
+def get_pyproject_files(filenames):
+    files = []
+
+    for filename in filenames:
         if "pyproject.toml" in filename:
-            break  # TODO: Take path to pyproject.toml here
-    else:
-        return 0
+            files.append(filename)
 
-    res = subprocess.run(
+    return files
+
+
+def get_updated_dependencies(base_dir):
+    process = subprocess.Popen(
         ["poetry", "export", "--without-hashes", "-f", "requirements.txt"],
-        stdout=subprocess.PIPE
+        stdout=subprocess.PIPE,
+        cwd=base_dir or "."
     )
 
-    updated = res.stdout.decode()
+    stdout, _ = process.communicate()
 
-    reqs_filename = "requirements.txt"
+    return stdout.decode()
 
+
+def update_requirements(reqs_filename, updated):
     try:
         with open(reqs_filename, "r+") as f:
             if f.read().splitlines() == updated.splitlines():
@@ -44,13 +51,30 @@ def main(argv=None):
                 f.seek(0)
                 f.write(updated)
                 f.truncate()
-    except FileNotFoundError:
+    except EnvironmentError as e:
+        if e.errno != errno.ENOENT:
+            raise
         with open(reqs_filename, "w") as f:
             f.write(updated)
 
-    subprocess.run(["git", "add", reqs_filename])
+    os.system("git add %s" % reqs_filename)
 
     print("%s synced with pyproject.toml" % reqs_filename)
+
+
+def main(argv=None):
+    args = parse_arguments(argv)
+
+    files = get_pyproject_files(args.filenames)
+
+    if not files:
+        return 0
+
+    for file in files:
+        base_dir = os.path.dirname(file)
+        updated = get_updated_dependencies(base_dir)
+        reqs_filename = os.path.join(base_dir, "requirements.txt")
+        update_requirements(reqs_filename, updated)
 
     return 0
 
@@ -59,9 +83,10 @@ if __name__ == "__main__":
     argv = None
 
     if len(sys.argv) == 1:
-        files = subprocess.run(
+        process = subprocess.Popen(
             ["git", "diff", "--cached", "--name-only"], stdout=subprocess.PIPE
         )
-        argv = files.stdout.decode().strip().split("\n")
+        stdout, _ = process.communicate()
+        argv = stdout.decode().strip().split("\n")
 
     sys.exit(main(argv))
