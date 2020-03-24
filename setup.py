@@ -7,11 +7,11 @@ with open("README.md", "r") as f:
     readme = f.read()
 
 setup(
-    name="pkg-resources-removal",
+    name="poetry-requirements-sync",
     version=__version__,
     author="Aleksa Ćuković",
     author_email="aleksacukovic1@gmail.com",
-    description="git pre-commit hook for removing pkg-resources from requirements.txt",
+    description="git pre-commit hook for syncing pyproject.toml with requirements.txt",
     long_description=readme,
     long_description_content_type="text/markdown",
     url="https://github.com/AleksaC/poetry-requirements-sync-hook",
@@ -19,6 +19,6 @@ setup(
     python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*",
     packages=["poetry_requirements_sync"],
     entry_points={
-        "console_scripts": ["remove-pkg-resources = poetry_requirements_sync.sync:main"]
+        "console_scripts": ["sync_requirements = poetry_requirements_sync.sync:main"]
     },
 )
