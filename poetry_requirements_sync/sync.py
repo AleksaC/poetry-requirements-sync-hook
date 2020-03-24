@@ -15,6 +15,8 @@ def parse_arguments(args):
     parser.add_argument(
         "filenames", nargs="*", help="Filenames pre-commit believes are changed.",
     )
+    parser.add_argument("--dev", action="store_true")
+    parser.add_argument("--without-hashes", action="store_true")
 
     return parser.parse_args(args)
 
@@ -29,19 +31,32 @@ def get_pyproject_files(filenames):
     return files
 
 
-def get_updated_dependencies(base_dir):
-    process = subprocess.Popen(
-        ["poetry", "export", "--without-hashes", "-f", "requirements.txt"],
-        stdout=subprocess.PIPE,
-        cwd=base_dir or "."
-    )
+def get_updated_dependencies(base_dir, dev, without_hashes):
+    poetry_lock = os.path.join(base_dir, "poetry.lock")
+    if not os.path.exists(poetry_lock):
+        status = subprocess.call(
+            ["poetry", "lock"], stdout=subprocess.PIPE, cwd=base_dir or ".",
+        )
 
+        if status != 0:
+            return
+
+        os.system("git add %s" % poetry_lock)
+
+    command = ["poetry", "export"]
+    if dev:
+        command.append("--dev")
+    if without_hashes:
+        command.append("--without-hashes")
+    command.extend(["-f", "requirements.txt"])
+
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, cwd=base_dir or ".",)
     stdout, _ = process.communicate()
 
     return stdout.decode()
 
 
-def update_requirements(reqs_filename, updated):
+def write_requirements(reqs_filename, updated):
     try:
         with open(reqs_filename, "r+") as f:
             if f.read().splitlines() == updated.splitlines():
@@ -62,19 +77,28 @@ def update_requirements(reqs_filename, updated):
     print("%s synced with pyproject.toml" % reqs_filename)
 
 
+def update_requirements(base_dir, dev, without_hashes):
+    updated = get_updated_dependencies(base_dir, dev, without_hashes)
+
+    reqs_filename = "requirements-dev.txt" if dev else "requirements.txt"
+    reqs_filename = os.path.join(base_dir, reqs_filename)
+
+    write_requirements(reqs_filename, updated)
+
+
 def main(argv=None):
     args = parse_arguments(argv)
 
     files = get_pyproject_files(args.filenames)
-
-    if not files:
-        return 0
+    files = filter(lambda file: os.path.exists(file), files)
 
     for file in files:
         base_dir = os.path.dirname(file)
-        updated = get_updated_dependencies(base_dir)
-        reqs_filename = os.path.join(base_dir, "requirements.txt")
-        update_requirements(reqs_filename, updated)
+
+        if args.dev:
+            update_requirements(base_dir, True, args.without_hashes)
+
+        update_requirements(base_dir, False, args.without_hashes)
 
     return 0
 
