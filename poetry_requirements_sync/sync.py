@@ -34,9 +34,7 @@ def get_pyproject_files(filenames):
 def get_updated_dependencies(base_dir, dev, without_hashes):
     poetry_lock = os.path.join(base_dir, "poetry.lock")
     if not os.path.exists(poetry_lock):
-        status = subprocess.call(
-            ["poetry", "lock"], stdout=subprocess.PIPE, cwd=base_dir or ".",
-        )
+        status = subprocess.call(["poetry", "lock"], cwd=base_dir or ".")
 
         if status != 0:
             return
@@ -50,7 +48,7 @@ def get_updated_dependencies(base_dir, dev, without_hashes):
         command.append("--without-hashes")
     command.extend(["-f", "requirements.txt"])
 
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, cwd=base_dir or ".",)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, cwd=base_dir or ".")
     stdout, _ = process.communicate()
 
     return stdout.decode()
@@ -80,6 +78,9 @@ def write_requirements(reqs_filename, updated):
 def update_requirements(base_dir, dev, without_hashes):
     updated = get_updated_dependencies(base_dir, dev, without_hashes)
 
+    if not updated:
+        return
+
     reqs_filename = "requirements-dev.txt" if dev else "requirements.txt"
     reqs_filename = os.path.join(base_dir, reqs_filename)
 
@@ -95,10 +96,13 @@ def main(argv=None):
     for file in files:
         base_dir = os.path.dirname(file)
 
-        if args.dev:
-            update_requirements(base_dir, True, args.without_hashes)
-
-        update_requirements(base_dir, False, args.without_hashes)
+        try:
+            update_requirements(base_dir, False, args.without_hashes)
+            if args.dev:
+                update_requirements(base_dir, True, args.without_hashes)
+        except Exception as e:
+            print("Something went wrong...", e, sep="\n")
+            return 1
 
     return 0
 
