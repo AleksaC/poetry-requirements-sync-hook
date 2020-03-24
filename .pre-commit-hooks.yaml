@@ -5,3 +5,4 @@
   language: python
   require_serial: true
   types: [text]
+  args: [--dev, --without-hashes]
