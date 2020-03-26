@@ -87,6 +87,14 @@ def update_requirements(base_dir, dev, without_hashes):
     write_requirements(reqs_filename, updated)
 
 
+def get_staged():
+    process = subprocess.Popen(
+        ["git", "diff", "--cached", "--name-only"], stdout=subprocess.PIPE
+    )
+    stdout, _ = process.communicate()
+    return stdout.decode().strip().split("\n")
+
+
 def main(argv=None):
     args = parse_arguments(argv)
 
@@ -103,6 +111,10 @@ def main(argv=None):
         except Exception as e:
             print("Something went wrong...", e, sep="\n")
             return 1
+    
+    if len(args.filenames) != len(get_staged()):
+        print("\nFiles were modified and staged inside hook, please run commit again!")
+        return 1
 
     return 0
 
@@ -111,10 +123,6 @@ if __name__ == "__main__":
     argv = None
 
     if len(sys.argv) == 1:
-        process = subprocess.Popen(
-            ["git", "diff", "--cached", "--name-only"], stdout=subprocess.PIPE
-        )
-        stdout, _ = process.communicate()
-        argv = stdout.decode().strip().split("\n")
+        argv = get_staged()
 
     sys.exit(main(argv))
