@@ -9,6 +9,9 @@ import subprocess
 import sys
 
 
+_updated = False
+
+
 def parse_arguments(args):
     parser = argparse.ArgumentParser()
 
@@ -32,6 +35,8 @@ def get_pyproject_files(filenames):
 
 
 def get_updated_dependencies(base_dir, dev, without_hashes):
+    global _updated
+
     poetry_lock = os.path.join(base_dir, "poetry.lock")
     if not os.path.exists(poetry_lock):
         status = subprocess.call(["poetry", "lock"], cwd=base_dir or ".")
@@ -40,6 +45,7 @@ def get_updated_dependencies(base_dir, dev, without_hashes):
             return
 
         os.system("git add %s" % poetry_lock)
+        _updated = True
 
     command = ["poetry", "export"]
     if dev:
@@ -55,11 +61,13 @@ def get_updated_dependencies(base_dir, dev, without_hashes):
 
 
 def write_requirements(reqs_filename, updated):
+    global _updated
+
     try:
         with open(reqs_filename, "r+") as f:
             if f.read().splitlines() == updated.splitlines():
                 print("%s already synced with pyproject.toml" % reqs_filename)
-                return 0
+                return
             else:
                 f.seek(0)
                 f.write(updated)
@@ -71,6 +79,8 @@ def write_requirements(reqs_filename, updated):
             f.write(updated)
 
     os.system("git add %s" % reqs_filename)
+
+    _updated = True
 
     print("%s synced with pyproject.toml" % reqs_filename)
 
@@ -89,7 +99,7 @@ def update_requirements(base_dir, dev, without_hashes):
 
 def get_staged():
     process = subprocess.Popen(
-        ["git", "diff", "--cached", "--name-only"], stdout=subprocess.PIPE
+        ["git", "diff", "--name-only", "--cached"], stdout=subprocess.PIPE
     )
     stdout, _ = process.communicate()
     return stdout.decode().strip().split("\n")
@@ -112,8 +122,8 @@ def main(argv=None):
             print("Something went wrong...", e, sep="\n")
             return 1
     
-    if len(args.filenames) != len(get_staged()):
-        print("\nFiles were modified and staged inside hook, please run commit again!")
+    if _updated:
+        print("\nFiles were modified and staged inside hook, please commit again!")
         return 1
 
     return 0
