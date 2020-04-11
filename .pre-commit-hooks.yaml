@@ -4,4 +4,4 @@
   entry: sync-requirements
   language: python
   require_serial: true
-  types: [text]
+  files: "^(.*/)?pyproject\.toml$"
