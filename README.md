@@ -36,5 +36,5 @@ repos:
     rev: master
     hooks:
       - id: poetry-requirements-sync
-        args: [--dev, --without-hashes]
+        args: [--dev, --without-hashes, --auto-add]
 ```

@@ -20,6 +20,7 @@ def parse_arguments(args):
     )
     parser.add_argument("--dev", action="store_true")
     parser.add_argument("--without-hashes", action="store_true")
+    parser.add_argument("--auto-add", action="store_true")
 
     return parser.parse_args(args)
 
@@ -60,7 +61,7 @@ def get_updated_dependencies(base_dir, dev, without_hashes):
     return stdout.decode()
 
 
-def write_requirements(reqs_filename, updated):
+def write_requirements(reqs_filename, updated, auto_add):
     global _updated
 
     try:
@@ -78,14 +79,15 @@ def write_requirements(reqs_filename, updated):
         with open(reqs_filename, "w") as f:
             f.write(updated)
 
-    os.system("git add %s" % reqs_filename)
+    if auto_add:
+        os.system("git add %s" % reqs_filename)
 
     _updated = True
 
     print("%s synced with pyproject.toml" % reqs_filename)
 
 
-def update_requirements(base_dir, dev, without_hashes):
+def update_requirements(base_dir, dev, without_hashes, auto_add):
     updated = get_updated_dependencies(base_dir, dev, without_hashes)
 
     if not updated:
@@ -94,7 +96,7 @@ def update_requirements(base_dir, dev, without_hashes):
     reqs_filename = "requirements-dev.txt" if dev else "requirements.txt"
     reqs_filename = os.path.join(base_dir, reqs_filename)
 
-    write_requirements(reqs_filename, updated)
+    write_requirements(reqs_filename, updated, auto_add)
 
 
 def get_staged():
@@ -115,9 +117,9 @@ def main(argv=None):
         base_dir = os.path.dirname(file)
 
         try:
-            update_requirements(base_dir, False, args.without_hashes)
+            update_requirements(base_dir, False, args.without_hashes, args.auto_add)
             if args.dev:
-                update_requirements(base_dir, True, args.without_hashes)
+                update_requirements(base_dir, True, args.without_hashes, args.auto_add)
         except Exception as e:
             print("Something went wrong...", e, sep="\n")
             return 1
