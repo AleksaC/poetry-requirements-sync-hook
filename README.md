@@ -22,7 +22,12 @@ Like `poetry` you can modify this by adding `--dev` and `--without-hashes` args.
 
 ## Usage
 You can use the hook by renaming the `sync.py` file to `pre-commit` and moving
-it to `.git/hooks/`
+it to `.git/hooks/`. Assuming you are in the root of your project and have 
+already initialized a git repo you can use the following command:
+```shell script
+wget https://raw.githubusercontent.com/AleksaC/poetry-requirements-sync-hook/master/poetry_requirements_sync/sync.py -O .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+``` 
+
 ### With [pre-commit](https://pre-commit.com/)
 Add the following lines to `.pre-commit-config.yaml`
 ```yaml
