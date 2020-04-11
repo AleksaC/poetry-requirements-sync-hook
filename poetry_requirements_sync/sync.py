@@ -123,9 +123,19 @@ def main(argv=None):
         except Exception as e:
             print("Something went wrong...", e, sep="\n")
             return 1
-    
+
     if _updated:
-        print("\nFiles were modified and staged inside hook, please commit again!")
+        if args.auto_add:
+            print(
+                "\nFiles were modified and staged inside the hook, "
+                "please commit again!"
+            )
+        else:
+            print(
+                "\nFiles were modified inside the hook, "
+                "please add those files and commit again!"
+            )
+
         return 1
 
     return 0
