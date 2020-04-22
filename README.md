@@ -17,6 +17,8 @@ a dependency.
 By default the hook doesn't include dev dependencies and it includes hashes. The
 main reason for this is that this is how `poetry`'s export works by default. 
 Like `poetry` you can modify this by adding `--dev` and `--without-hashes` args.
+The hook autmatically fixes the inconsistencies and can be configured to 
+automatically stage the fixes by adding `--auto-add` argument.
 
 **Note**: For the hook to work you need to have `poetry` installed.
 
