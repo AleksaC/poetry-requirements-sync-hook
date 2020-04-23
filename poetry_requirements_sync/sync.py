@@ -14,9 +14,9 @@ _updated = False
 
 files_pattern = re.compile(
     r"""(?x)(
-        ^(.*/)?pyproject\.toml$|
-        ^(.*/)?poetry\.lock$|
-        ^(.+/)?requirements(-.*)?\.txt$
+        (?P<pyproject>^(.*/)?pyproject\.toml$)|
+        (?P<poetry_lock>^(.*/)?poetry\.lock$)|
+        (?P<requirements_txt>^(.+/)?requirements(-.*)?\.txt$)
     )"""
 )
 
@@ -35,11 +35,19 @@ def parse_arguments(args):
 
 
 def get_files(filenames):
-    files = []
+    files = set()
 
     for filename in filenames:
-        if re.match(files_pattern, filename):
-            files.append(filename)
+        match = re.match(files_pattern, filename)
+        if match.group("pyproject"):
+            files.add(filename)
+        elif match.group("poetry_lock"):
+            pyproject = os.path.join(os.path.dirname(filename), "pyproject.toml")
+            files.add(pyproject)
+        elif match.group("requirements_txt"):
+            pyproject = os.path.join(os.path.dirname(filename), "pyproject.toml")
+            if os.path.exists(pyproject):
+                files.add(pyproject)
 
     return files
 
@@ -55,12 +63,12 @@ def get_updated_dependencies(base_dir, dev, without_hashes, auto_add):
         _updated = True
 
         if status != 0:
-            print("Something went wrong while trying to generate `poetry.lock`")
+            print("\nSomething went wrong while trying to generate `poetry.lock`")
             return
 
         if auto_add:
             os.system("git add %s" % poetry_lock)
-            print("Created %s" % poetry_lock)
+            print("\nCreated %s" % poetry_lock)
 
     command = ["poetry", "export"]
     if dev:
@@ -81,12 +89,12 @@ def get_updated_dependencies(base_dir, dev, without_hashes, auto_add):
         _updated = True
 
         if status != 0:
-            print("Something went wrong while trying to update `poetry.lock`")
+            print("\nSomething went wrong while trying to update `poetry.lock`")
             return
 
         if auto_add:
             os.system("git add %s" % poetry_lock)
-            print("Updated %s" % poetry_lock)
+            print("\nUpdated %s" % poetry_lock)
 
         deps = deps.split("\n", 1)[1]
 
@@ -144,9 +152,12 @@ def main(argv=None):
 
     files = get_files(args.filenames)
 
+    assert all("pyproject.toml" in file for file in files)
+
     for file in files:
         if not os.path.exists(file):
             print("`%s` does not exist" % file)
+            return 1
 
         base_dir = os.path.dirname(file)
 
