@@ -40,6 +40,10 @@ def get_files(filenames):
 
     for filename in filenames:
         match = re.match(files_pattern, filename)
+
+        if match is None:
+            continue
+
         if match.group("pyproject"):
             files.add(filename)
         elif match.group("poetry_lock"):
