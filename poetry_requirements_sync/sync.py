@@ -52,6 +52,13 @@ def get_files(filenames):
     return files
 
 
+def get_dependencies(command, base_dir):
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, cwd=base_dir or ".")
+    stdout, _ = process.communicate()
+
+    return stdout.decode()
+
+
 def get_updated_dependencies(base_dir, dev, without_hashes, auto_add):
     global _updated
 
@@ -77,12 +84,8 @@ def get_updated_dependencies(base_dir, dev, without_hashes, auto_add):
         command.append("--without-hashes")
     command.extend(["-f", "requirements.txt"])
 
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, cwd=base_dir or ".")
-    stdout, _ = process.communicate()
+    deps = get_dependencies(command, base_dir)
 
-    deps = stdout.decode()
-
-    # In case lockfile is outdated
     if deps.startswith("Warning:"):
         status = subprocess.call(["poetry", "update"], cwd=base_dir or ".")
 
@@ -96,7 +99,7 @@ def get_updated_dependencies(base_dir, dev, without_hashes, auto_add):
             os.system("git add %s" % poetry_lock)
             print("\nUpdated %s" % poetry_lock)
 
-        deps = deps.split("\n", 1)[1]
+        deps = get_dependencies(command, base_dir)
 
     return deps
 
