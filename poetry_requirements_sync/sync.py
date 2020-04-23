@@ -13,11 +13,12 @@ import sys
 _updated = False
 
 files_pattern = re.compile(
-    r"""(?x)(
+    r"""
         (?P<pyproject>^(.*/)?pyproject\.toml$)|
         (?P<poetry_lock>^(.*/)?poetry\.lock$)|
-        (?P<requirements_txt>^(.+/)?requirements(-.*)?\.txt$)
-    )"""
+        (?P<requirements_txt>^(.+/)?requirements(-dev)?\.txt$)
+    """,
+    re.X,
 )
 
 

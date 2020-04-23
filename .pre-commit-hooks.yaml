@@ -8,5 +8,5 @@
     (?x)(
       ^(.*/)?pyproject\.toml$|
       ^(.*/)?poetry\.lock$|
-      ^(.+/)?requirements(-.*)?\.txt$
+      ^(.+/)?requirements(-dev)?\.txt$
     )
