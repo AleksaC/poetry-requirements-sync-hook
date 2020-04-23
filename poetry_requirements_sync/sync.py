@@ -5,11 +5,20 @@ from __future__ import print_function
 import argparse
 import errno
 import os
+import re
 import subprocess
 import sys
 
 
 _updated = False
+
+files_pattern = re.compile(
+    r"""(?x)(
+        ^(.*/)?pyproject\.toml$|
+        ^(.*/)?poetry\.lock$|
+        ^(.+/)?requirements(-.*)?\.txt$
+    )"""
+)
 
 
 def parse_arguments(args):
@@ -25,28 +34,33 @@ def parse_arguments(args):
     return parser.parse_args(args)
 
 
-def get_pyproject_files(filenames):
+def get_files(filenames):
     files = []
 
     for filename in filenames:
-        if "pyproject.toml" in filename:
+        if re.match(files_pattern, filename):
             files.append(filename)
 
     return files
 
 
-def get_updated_dependencies(base_dir, dev, without_hashes):
+def get_updated_dependencies(base_dir, dev, without_hashes, auto_add):
     global _updated
 
     poetry_lock = os.path.join(base_dir, "poetry.lock")
+
     if not os.path.exists(poetry_lock):
         status = subprocess.call(["poetry", "lock"], cwd=base_dir or ".")
 
+        _updated = True
+
         if status != 0:
+            print("Something went wrong while trying to generate `poetry.lock`")
             return
 
-        os.system("git add %s" % poetry_lock)
-        _updated = True
+        if auto_add:
+            os.system("git add %s" % poetry_lock)
+            print("Created %s" % poetry_lock)
 
     command = ["poetry", "export"]
     if dev:
@@ -58,7 +72,25 @@ def get_updated_dependencies(base_dir, dev, without_hashes):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, cwd=base_dir or ".")
     stdout, _ = process.communicate()
 
-    return stdout.decode()
+    deps = stdout.decode()
+
+    # In case lockfile is outdated
+    if deps.startswith("Warning:"):
+        status = subprocess.call(["poetry", "update"], cwd=base_dir or ".")
+
+        _updated = True
+
+        if status != 0:
+            print("Something went wrong while trying to update `poetry.lock`")
+            return
+
+        if auto_add:
+            os.system("git add %s" % poetry_lock)
+            print("Updated %s" % poetry_lock)
+
+        deps = deps.split("\n", 1)[1]
+
+    return deps
 
 
 def write_requirements(reqs_filename, updated, auto_add):
@@ -88,7 +120,7 @@ def write_requirements(reqs_filename, updated, auto_add):
 
 
 def update_requirements(base_dir, dev, without_hashes, auto_add):
-    updated = get_updated_dependencies(base_dir, dev, without_hashes)
+    updated = get_updated_dependencies(base_dir, dev, without_hashes, auto_add)
 
     if not updated:
         return
@@ -110,10 +142,12 @@ def get_staged():
 def main(argv=None):
     args = parse_arguments(argv)
 
-    files = get_pyproject_files(args.filenames)
-    files = filter(lambda file: os.path.exists(file), files)
+    files = get_files(args.filenames)
 
     for file in files:
+        if not os.path.exists(file):
+            print("`%s` does not exist" % file)
+
         base_dir = os.path.dirname(file)
 
         try:

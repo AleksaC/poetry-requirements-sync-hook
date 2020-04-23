@@ -1,6 +1,6 @@
 # poetry-requirements-sync-hook
 
-git pre-commit hook for syncing `pyproject.toml` with `requirements.txt`
+Pre-commit hook for syncing `pyproject.toml` with `requirements.txt`
 
 ## About
 

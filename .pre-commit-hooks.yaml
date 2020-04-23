@@ -4,4 +4,9 @@
   entry: sync-requirements
   language: python
   require_serial: true
-  files: ^(.*/)?pyproject\.toml$
+  files: |
+    (?x)(
+      ^(.*/)?pyproject\.toml$|
+      ^(.*/)?poetry\.lock$|
+      ^(.+/)?requirements(-.*)?\.txt$
+    )
